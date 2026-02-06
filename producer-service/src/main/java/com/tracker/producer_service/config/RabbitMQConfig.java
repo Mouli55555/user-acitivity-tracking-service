@@ -1,0 +1,33 @@
+package com.tracker.producer_service.config;
+
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class RabbitMQConfig {
+
+    public static final String QUEUE_NAME = "user_activity_events";
+
+    @Bean
+    public Queue queue() {
+        return new Queue(QUEUE_NAME, true, false, false);
+    }
+
+    @Bean
+    public Jackson2JsonMessageConverter jackson2MessageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+
+    // Configure RabbitTemplate to use JSON converter
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory,
+                                         Jackson2JsonMessageConverter converter) {
+        RabbitTemplate template = new RabbitTemplate(connectionFactory);
+        template.setMessageConverter(converter);
+        return template;
+    }
+}

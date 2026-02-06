@@ -1,0 +1,79 @@
+version: "3.8"
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: appuser
+      RABBITMQ_DEFAULT_PASS: rabbitpass
+    networks:
+      - app-network
+    restart: unless-stopped
+
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: user_activity_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - app-network
+    restart: unless-stopped
+
+
+  producer-service:
+    build: ./producer-service
+    container_name: producer-service
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: appuser
+      SPRING_RABBITMQ_PASSWORD: rabbitpass
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      - rabbitmq
+    networks:
+      - app-network
+    restart: on-failure
+
+
+  consumer-service:
+    build: ./consumer-service
+    container_name: consumer-service
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: appuser
+      SPRING_RABBITMQ_PASSWORD: rabbitpass
+
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/user_activity_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root_password
+
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      - rabbitmq
+      - mysql
+    networks:
+      - app-network
+    restart: on-failure
+
+
+networks:
+  app-network:
+    driver: bridge
